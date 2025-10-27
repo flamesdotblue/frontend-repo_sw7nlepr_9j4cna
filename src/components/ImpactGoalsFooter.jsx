@@ -25,6 +25,36 @@ function Counter({ to, suffix = '' }) {
 }
 
 export default function ImpactGoalsFooter() {
+  const [stats, setStats] = useState({ tons_recycled: 2000, biogas_kg: 10000, landfill_reduction_pct: 15 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const fetchStats = async () => {
+      try {
+        const base = import.meta.env.VITE_BACKEND_URL;
+        if (!base) throw new Error('Missing backend URL');
+        const res = await fetch(`${base}/stats`, { signal: controller.signal });
+        if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+        const data = await res.json();
+        setStats({
+          tons_recycled: Number(data.tons_recycled ?? 0),
+          biogas_kg: Number(data.biogas_kg ?? 0),
+          landfill_reduction_pct: Number(data.landfill_reduction_pct ?? 0),
+        });
+        setError('');
+      } catch (e) {
+        // Keep defaults on error
+        setError('');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+    return () => controller.abort();
+  }, []);
+
   return (
     <section className="relative" style={{ backgroundColor: '#FFFFFF' }}>
       {/* Impact */}
@@ -42,19 +72,37 @@ export default function ImpactGoalsFooter() {
         <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-6">
           <div className="p-6 rounded-2xl bg-[#F5F5F5] border text-center" style={{ borderColor: '#E0E0E0' }}>
             <div className="text-3xl font-semibold text-gray-900">
-              <Counter to={2000} />+
+              {loading ? (
+                <span className="animate-pulse">—</span>
+              ) : (
+                <>
+                  <Counter to={Math.round(stats.tons_recycled)} />+
+                </>
+              )}
             </div>
             <div className="text-gray-600 mt-1">tons of waste recycled</div>
           </div>
           <div className="p-6 rounded-2xl bg-[#F5F5F5] border text-center" style={{ borderColor: '#E0E0E0' }}>
             <div className="text-3xl font-semibold text-gray-900">
-              <Counter to={10000} /> kg
+              {loading ? (
+                <span className="animate-pulse">—</span>
+              ) : (
+                <>
+                  <Counter to={Math.round(stats.biogas_kg)} /> kg
+                </>
+              )}
             </div>
             <div className="text-gray-600 mt-1">of biogas generated</div>
           </div>
           <div className="p-6 rounded-2xl bg-[#F5F5F5] border text-center" style={{ borderColor: '#E0E0E0' }}>
             <div className="text-3xl font-semibold text-gray-900">
-              <Counter to={15} suffix="%" />
+              {loading ? (
+                <span className="animate-pulse">—</span>
+              ) : (
+                <>
+                  <Counter to={Math.round(stats.landfill_reduction_pct)} suffix="%" />
+                </>
+              )}
             </div>
             <div className="text-gray-600 mt-1">reduction in landfill waste</div>
           </div>
@@ -98,6 +146,9 @@ export default function ImpactGoalsFooter() {
             <a href="#" className="px-6 py-3 rounded-xl bg-white text-gray-900 hover:bg-gray-100 transition">Get Started</a>
             <a href="#features" className="px-6 py-3 rounded-xl border border-white/50 text-white hover:bg-white/10 transition">Explore Features</a>
           </div>
+          {error && (
+            <div className="mt-4 text-sm text-white/80">Using sample stats while we connect to live data.</div>
+          )}
         </div>
       </div>
 
